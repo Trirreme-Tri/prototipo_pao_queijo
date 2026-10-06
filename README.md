@@ -1,30 +1,33 @@
-# Protótipo · Casa do Pão de Queijo
+# Casa do Pão de Queijo · Sistema de gestão (protótipo)
 
-MVP de **descoberta** para a Casa do Pão de Queijo (Ariquemes/RO), cliente da TRIRREME.
-O objetivo não é ser a primeira versão do produto: é mostrar telas reais ao Thiago e
-descobrir qual delas resolve um incômodo de verdade.
+Protótipo de sistema de gestão para a Casa do Pão de Queijo (Ariquemes/RO), cliente da TRIRREME.
+Funciona no navegador, no **PC** (completo) e no **celular** (telas da cozinha e do balcão).
 
-## O que tem
+Publicado em: `https://trirreme-tri.github.io/prototipo_pao_queijo/` (atualiza a cada merge na `main`).
 
-| Tela | O que faz | O que queremos descobrir |
+## Módulos
+
+| Módulo | O que faz | Celular |
 |---|---|---|
-| Início | Menu e aviso de demonstração | — |
-| Fornadas | Botão "Saiu uma fornada" (guarda o horário), desfazer, sobra do dia | Não saber quanto produz incomoda? |
-| Cardápio | Thiago edita itens e preços; QR code abre a versão do cliente | O desejo é vitrine ou receber pedidos? |
-| Estoque | Duas listas: ingredientes do pão de queijo × produtos de revenda | Qual das duas importa? |
-| Clientes a prazo | Lançar consumo, total da semana, marcar como pago | Isso incomoda ou não? |
-| Vendas | Desabilitada até chegar o relatório da maquininha | — |
+| Painel | Vendas do dia, caixa, cozinha, estoque baixo, contas vencendo | sim |
+| Caixa (PDV) | Abrir/fechar caixa, código ou `3*101`, peso (kg), desconto, dinheiro com troco, Pix, débito, crédito, fiado, pagamento dividido, sangria, suprimento, comprovante (F2 finaliza, F9 abre o caixa) | não |
+| Vendas | Histórico, reimpressão, cancelamento (devolve estoque), fechamentos de caixa, CSV | não |
+| Cozinha | Pedidos do caixa (itens feitos na hora) e encomendas: novo → preparando → pronto → entregue | sim |
+| Produção | "Saiu fornada" com um toque, ordens de produção, fichas técnicas com custo e margem | sim |
+| Estoque | Posição, entrada de mercadoria (com conta a pagar), perdas, contagem, extrato | sim |
+| Produtos | Insumos, fabricados e revenda; feito na hora baixa ingredientes na venda | não |
+| Clientes e fiado | Limite, extrato, recebimento no caixa | sim |
+| Financeiro | Contas a pagar/receber, fluxo de caixa | não |
+| Relatórios | Faturamento, ticket médio, formas de pagamento, mais vendidos, lucro estimado, produção, perdas | não |
+| Cardápio e QR | Escolhe os itens, gera QR; o cliente pede pelo WhatsApp | sim |
+
+**Controle interno: não emite nota fiscal.**
 
 ## Onde ficam os dados
 
-No **navegador do aparelho** (`localStorage`). Não há servidor nem banco de dados.
-Consequências que o Thiago precisa saber:
-
-- O que é anotado no celular do balcão **não aparece** no computador do caixa.
-- Limpar o navegador ou usar aba anônima apaga tudo. Por isso existe a tela
-  **Início → Cópia de segurança dos dados** (salvar/abrir arquivo).
-- O cardápio público funciona em qualquer celular porque os itens vão **dentro do link**
-  do QR code. Mudou preço? Gere e imprima o QR de novo.
+No navegador de cada aparelho (`localStorage`). Sem servidor: o PC do caixa e o celular da cozinha
+têm dados separados. Abas abertas no mesmo navegador se atualizam sozinhas. Faça cópias em
+Configurações. Na primeira vez abre uma loja de demonstração (dados fictícios).
 
 Decisões e motivos: [`docs/decisoes.md`](docs/decisoes.md).
 
@@ -33,19 +36,13 @@ Decisões e motivos: [`docs/decisoes.md`](docs/decisoes.md).
 ```bash
 npm ci
 npm run dev            # http://localhost:5173
-npm run verificar      # tipos + testes + build + testes no navegador (E2E)
+npm run verificar      # tipos + testes + build + testes no navegador (PC e celular)
 ```
 
-O E2E usa Playwright: na primeira vez rode `npx playwright install chromium`.
+Para testar no caminho do GitHub Pages: `BASE_PATH=/prototipo_pao_queijo/ npm run test:e2e`.
 
-## Publicar
+## Código
 
-GitHub Pages, automático a cada merge na `main` (`.github/workflows/pages.yml`).
-Endereço: `https://trirreme-tri.github.io/prototipo_pao_queijo/`.
-Para testar localmente no mesmo caminho: `BASE_PATH=/prototipo_pao_queijo/ npm run test:e2e`.
-
-## Stack
-
-Vite + TypeScript, sem framework. Única dependência de produção: `qrcode-generator` (MIT).
-Fontes (Atkinson Hyperlegible e Big Shoulders Display, licença OFL) servidas pelo próprio site.
-Design system: "Casa do Pão de Queijo" (Claude Design), tokens em `src/estilos.css`.
+- `src/dominio/` regras de negócio (funções puras, testadas em `dominio.test.ts`)
+- `src/telas/` uma tela por módulo · `src/ui/` componentes · `src/main.ts` navegação e armazenamento
+- Vite + TypeScript, sem framework. Única dependência de produção: `qrcode-generator` (MIT).
