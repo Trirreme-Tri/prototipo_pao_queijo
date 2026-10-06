@@ -1,8 +1,12 @@
 // Guarda o estado no localStorage do navegador. Os dados ficam só neste aparelho.
+// Abas abertas no mesmo navegador conversam entre si (evento "storage" em main.ts).
 
-import { estadoInicial, validarEstado, type Estado } from './estado';
+import { dadosDemonstracao, estadoVazio, migrarV1 } from './dominio/inicial';
+import type { Estado } from './dominio/tipos';
+import { validarEstado } from './dominio/validacao';
 
-export const CHAVE = 'casa-pao-de-queijo:v1';
+export const CHAVE = 'casa-pao-de-queijo:v2';
+export const CHAVE_V1 = 'casa-pao-de-queijo:v1';
 
 export interface Armazem {
   getItem(k: string): string | null;
@@ -10,17 +14,34 @@ export interface Armazem {
   removeItem(k: string): void;
 }
 
-export type Carga = { estado: Estado; aviso: null | 'sem-armazenamento' | 'dados-corrompidos' };
+export type AvisoCarga = null | 'sem-armazenamento' | 'dados-corrompidos' | 'migrado-v1';
+export type Carga = { estado: Estado; aviso: AvisoCarga };
 
-export function carregar(armazem: Armazem | null): Carga {
-  if (!armazem) return { estado: estadoInicial(), aviso: 'sem-armazenamento' };
+function lerV1(bruto: string): Estado | null {
+  try {
+    const v = JSON.parse(bruto);
+    if (!v || v.versao !== 1 || !Array.isArray(v.cardapio) || !Array.isArray(v.clientes) || !v.estoque) return null;
+    return validarEstado(migrarV1(v));
+  } catch {
+    return null;
+  }
+}
+
+export function carregar(armazem: Armazem | null, agora: Date): Carga {
+  if (!armazem) return { estado: dadosDemonstracao(agora), aviso: 'sem-armazenamento' };
   let bruto: string | null;
+  let v1: string | null;
   try {
     bruto = armazem.getItem(CHAVE);
+    v1 = armazem.getItem(CHAVE_V1);
   } catch {
-    return { estado: estadoInicial(), aviso: 'sem-armazenamento' };
+    return { estado: dadosDemonstracao(agora), aviso: 'sem-armazenamento' };
   }
-  if (bruto == null) return { estado: estadoInicial(), aviso: null };
+  if (bruto == null) {
+    // Primeira vez nesta versão: aproveita o protótipo antigo, se houver; senão, demonstração.
+    const migrado = v1 ? lerV1(v1) : null;
+    return migrado ? { estado: migrado, aviso: 'migrado-v1' } : { estado: dadosDemonstracao(agora), aviso: null };
+  }
   try {
     return { estado: validarEstado(JSON.parse(bruto)), aviso: null };
   } catch {
@@ -30,7 +51,7 @@ export function carregar(armazem: Armazem | null): Carga {
     } catch {
       /* sem espaço: segue com estado novo */
     }
-    return { estado: estadoInicial(), aviso: 'dados-corrompidos' };
+    return { estado: estadoVazio(), aviso: 'dados-corrompidos' };
   }
 }
 
@@ -42,14 +63,6 @@ export function salvar(armazem: Armazem | null, estado: Estado): boolean {
     return true;
   } catch {
     return false;
-  }
-}
-
-export function apagarTudo(armazem: Armazem | null): void {
-  try {
-    armazem?.removeItem(CHAVE);
-  } catch {
-    /* nada a fazer */
   }
 }
 

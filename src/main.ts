@@ -1,109 +1,210 @@
 import './estilos.css';
-import { apagarTudo, armazemDoNavegador, carregar, salvar } from './armazenamento';
-import { estadoInicial, type Estado } from './estado';
-import * as T from './telas';
-import { aviso, avisar, el } from './ui';
+import { ROTAS, ROTAS_BARRA_CELULAR, type Ctx, type Rota } from './app';
+import { armazemDoNavegador, carregar, CHAVE, salvar } from './armazenamento';
+import { caixaAberto } from './dominio/caixa';
+import type { Estado } from './dominio/tipos';
+import { validarEstado } from './dominio/validacao';
+import { avisar, el, icone } from './ui/base';
+import { aviso, botao } from './ui/componentes';
+import { fecharModalDoTopo, modalAberto } from './ui/modal';
+import { caixa } from './telas/caixa';
+import { cardapio, cardapioPublico } from './telas/cardapio';
+import { clientes } from './telas/clientes';
+import { config } from './telas/config';
+import { cozinha } from './telas/cozinha';
+import { estoque } from './telas/estoque';
+import { financeiro } from './telas/financeiro';
+import { painel } from './telas/painel';
+import { producao } from './telas/producao';
+import { produtos } from './telas/produtos';
+import { relatorios } from './telas/relatorios';
+import { vendas } from './telas/vendas';
+
+const TELAS: Record<string, (ctx: Ctx) => Node[]> = {
+  '/': painel, '/caixa': caixa, '/vendas': vendas, '/cardapio': cardapio, '/cozinha': cozinha, '/producao': producao,
+  '/estoque': estoque, '/produtos': produtos, '/clientes': clientes, '/financeiro': financeiro, '/relatorios': relatorios, '/config': config,
+};
 
 const armazem = armazemDoNavegador();
-const carga = carregar(armazem);
+const carga = carregar(armazem, new Date());
 let estado: Estado = carga.estado;
+if (carga.aviso === null || carga.aviso === 'migrado-v1') salvar(armazem, estado);
 let avisoArmazenamento: string | null =
-  carga.aviso === 'sem-armazenamento'
-    ? 'este navegador não está guardando os dados (modo anônimo?). O que você fizer some ao fechar.'
-    : carga.aviso === 'dados-corrompidos'
-      ? 'os dados salvos estavam danificados. Começamos do zero; a cópia antiga foi guardada.'
-      : null;
+  carga.aviso === 'sem-armazenamento' ? 'Este navegador não está guardando os dados (modo anônimo?). O que você fizer some ao fechar.'
+    : carga.aviso === 'dados-corrompidos' ? 'Os dados salvos estavam danificados. Começamos do zero; a cópia antiga foi guardada no navegador.'
+      : carga.aviso === 'migrado-v1' ? 'Trouxemos os itens, o estoque e os clientes do protótipo anterior. Confira os preços e as unidades em Produtos.'
+        : null;
 
-const ui: T.Contexto['ui'] = { edicao: null, clienteSelecionado: null };
 const raiz = document.getElementById('app')!;
+const telasUi = new Map<string, object>();
+const celularMq = window.matchMedia('(max-width: 899px)');
+let menuAberto = false;
 
 function rotaAtual(): string {
   return location.hash.replace(/^#/, '') || '/';
 }
 
 function ir(rota: string): void {
-  ui.edicao = null;
-  ui.clienteSelecionado = null;
+  menuAberto = false;
   if (rotaAtual() === rota) desenhar();
   else location.hash = rota;
 }
 
-function mudar(f: (e: Estado) => Estado, mensagem?: string): boolean {
+function aplicar(f: (e: Estado) => Estado, sucesso?: string): string | null {
+  let novo: Estado;
   try {
-    estado = f(estado);
+    novo = f(estado);
   } catch (err) {
-    avisar(err instanceof Error ? err.message : 'Não deu certo.');
-    return false;
+    return err instanceof Error ? err.message : 'Não deu certo.';
   }
-  if (!salvar(armazem, estado)) {
-    avisoArmazenamento = 'não foi possível salvar neste navegador. Faça uma cópia em arquivo (Início → Cópia de segurança).';
+  // Rede de segurança: nunca salva algo que não carregaria de volta.
+  try {
+    validarEstado(JSON.parse(JSON.stringify(novo)));
+  } catch (err) {
+    console.error(err);
+    return 'Não deu para salvar: isso deixaria os dados inconsistentes. Nada foi alterado.';
   }
+  estado = novo;
+  if (!salvar(armazem, estado)) avisoArmazenamento = 'Não foi possível salvar neste navegador. Baixe uma cópia em Configurações.';
   desenhar();
-  if (mensagem) avisar(mensagem);
-  return true;
+  if (sucesso) avisar(sucesso);
+  return null;
 }
 
-const contexto = (): T.Contexto => ({
-  estado,
-  mudar,
-  ir,
+const ctx = (): Ctx => ({
+  // Getter: quem guardou o ctx (ex.: uma janela aberta) sempre lê o estado atual.
+  get estado() {
+    return estado;
+  },
   agora: () => new Date(),
-  ui,
+  aplicar,
+  mudar: (f, sucesso) => {
+    const erro = aplicar(f, sucesso);
+    if (erro) avisar(erro, 'erro');
+    return erro === null;
+  },
+  tela: <T extends object>(chave: string, criar: () => T): T => {
+    if (!telasUi.has(chave)) telasUi.set(chave, criar());
+    return telasUi.get(chave) as T;
+  },
   redesenhar: desenhar,
-  substituirEstado: (novo) => {
-    estado = novo;
-    salvar(armazem, estado);
-    ir('/');
-  },
-  apagarTudo: () => {
-    apagarTudo(armazem);
-    estado = estadoInicial();
-    salvar(armazem, estado);
-    ir('/');
-    avisar('Tudo apagado');
-  },
+  ir,
   urlBase: location.origin + location.pathname,
+  celular: celularMq.matches,
+  substituirEstado: (novo, mensagem) => {
+    estado = novo;
+    telasUi.clear();
+    salvar(armazem, estado);
+    ir('/');
+    avisar(mensagem);
+  },
 });
+
+function linkMenu(r: Rota, atual: string, celular: boolean): HTMLElement {
+  const bloqueado = celular && !r.celular;
+  return el('a', { href: '#' + r.caminho, class: 'item-menu' + (r.caminho === atual ? ' ativo' : '') + (bloqueado ? ' so-pc' : ''), 'aria-current': r.caminho === atual ? 'page' : undefined, onclick: () => (menuAberto = false) },
+    icone(r.icone, 20), el('span', {}, r.titulo), bloqueado ? el('small', {}, 'PC') : r.atalho ? el('kbd', {}, r.atalho) : null);
+}
+
+function menuLateral(atual: string, celular: boolean): HTMLElement {
+  const grupos = [...new Set(ROTAS.map((r) => r.grupo))];
+  const sessao = caixaAberto(estado);
+  return el('nav', { class: 'menu-lateral' + (menuAberto ? ' aberto' : ''), 'aria-label': 'Menu principal' },
+    el('div', { class: 'marca' }, el('strong', {}, estado.config.nomeLoja), el('span', {}, 'Gestão da loja')),
+    ...grupos.map((g) => el('div', { class: 'grupo-menu' }, el('span', { class: 'titulo-grupo' }, g), ...ROTAS.filter((r) => r.grupo === g).map((r) => linkMenu(r, atual, celular)))),
+    el('div', { class: 'status-caixa ' + (sessao ? 'aberto' : 'fechado') }, sessao ? `Caixa aberto · ${sessao.operador}` : 'Caixa fechado'));
+}
+
+function barraCelular(atual: string): HTMLElement {
+  return el('nav', { class: 'barra-celular', 'aria-label': 'Atalhos' },
+    ...ROTAS.filter((r) => ROTAS_BARRA_CELULAR.includes(r.caminho)).map((r) =>
+      el('a', { href: '#' + r.caminho, class: r.caminho === atual ? 'ativo' : '', 'aria-current': r.caminho === atual ? 'page' : undefined }, icone(r.icone, 22), el('span', {}, r.titulo))),
+    el('button', { type: 'button', class: menuAberto ? 'ativo' : '', 'aria-expanded': menuAberto ? 'true' : 'false', onclick: () => { menuAberto = !menuAberto; desenhar(); } }, icone('menu', 22), el('span', {}, 'Mais')));
+}
+
+function soNoComputador(r: Rota): Node[] {
+  return [el('div', { class: 'so-computador' }, icone(r.icone, 48), el('h1', {}, r.titulo),
+    el('p', {}, 'Esta tela foi feita para o computador (tela grande, teclado e impressora).'),
+    el('p', { class: 'ajuda' }, 'No celular: Painel, Cozinha, Produção, Estoque, Clientes, Cardápio e Configurações.'),
+    botao('Voltar ao painel', () => ir('/'), { variante: 'secundario' }))];
+}
 
 function desenhar(): void {
   const rota = rotaAtual();
-  const ctx = contexto();
-  let nos: Node[];
-  if (rota.startsWith('/c/')) nos = T.cardapioPublico(rota.slice(3));
-  else if (rota === '/fornadas') nos = T.fornadas(ctx);
-  else if (rota === '/cardapio') nos = T.cardapio(ctx);
-  else if (rota === '/estoque') nos = T.estoque(ctx);
-  else if (rota === '/prazo') nos = T.prazo(ctx);
-  else if (rota === '/vendas') nos = T.vendas(ctx);
-  else if (rota === '/dados') nos = T.dados(ctx);
-  else nos = T.inicio(ctx);
+  // Lembra o campo focado para devolver o foco depois do redesenho (ex.: busca do caixa).
+  const ativo = document.activeElement as HTMLInputElement | null;
+  const chaveFoco = ativo?.dataset?.foco;
+  const selecao = chaveFoco && 'selectionStart' in ativo! ? [ativo.selectionStart, ativo.selectionEnd] : null;
 
-  const publico = rota.startsWith('/c/');
-  if (avisoArmazenamento && !publico) nos.splice(1, 0, aviso('Atenção:', avisoArmazenamento, true));
-  if (!publico) nos.push(el('footer', { class: 'rodape' }, 'Protótipo de demonstração · TRIRREME'));
+  if (rota.startsWith('/c/')) {
+    document.body.className = 'modo-publico';
+    raiz.replaceChildren(...cardapioPublico(rota.slice(3), desenhar));
+    return;
+  }
+  document.body.className = '';
+  const c = ctx();
+  const r = ROTAS.find((x) => x.caminho === rota) ?? ROTAS[0];
+  const conteudo = c.celular && !r.celular ? soNoComputador(r) : TELAS[r.caminho](c);
+  const avisos = [
+    avisoArmazenamento ? aviso(avisoArmazenamento, 'alerta', botao('Entendi', () => { avisoArmazenamento = null; desenhar(); }, { variante: 'secundario' })) : null,
+    estado.config.demonstracao && r.caminho === '/' ? aviso('Dados de demonstração: loja fictícia, preços e vendas inventados.', 'info', botao('Começar do zero', () => ir('/config'), { variante: 'secundario' })) : null,
+  ];
 
   const rolagem = window.scrollY;
-  raiz.replaceChildren(...nos);
-  const titulo = raiz.querySelector('h1')?.textContent ?? '';
-  document.title = titulo ? titulo + ' · Casa do Pão de Queijo' : 'Casa do Pão de Queijo';
-  // Mantém a posição ao editar na mesma tela; ao trocar de tela, volta ao topo.
+  raiz.replaceChildren(
+    el('div', { class: 'casca' + (c.celular ? ' celular' : '') },
+      c.celular
+        ? el('header', { class: 'topo-celular' }, el('strong', {}, estado.config.nomeLoja), el('span', {}, r.titulo))
+        : null,
+      menuLateral(r.caminho, c.celular),
+      c.celular && menuAberto ? el('div', { class: 'fundo-menu', onclick: () => { menuAberto = false; desenhar(); } }) : null,
+      el('main', { class: 'conteudo', id: 'conteudo' }, ...(avisos.filter(Boolean) as Node[]), ...conteudo),
+      c.celular ? barraCelular(r.caminho) : null));
+  document.title = `${r.titulo} · ${estado.config.nomeLoja}`;
   window.scrollTo(0, raiz.dataset.rota === rota ? rolagem : 0);
   raiz.dataset.rota = rota;
-  // Foca o primeiro campo de um formulário recém-aberto.
-  const campo = raiz.querySelector<HTMLInputElement>('form.painel input');
-  if (campo && ui.edicao) campo.focus({ preventScroll: false });
+
+  if (chaveFoco) {
+    const novo = raiz.querySelector<HTMLInputElement>(`[data-foco="${CSS.escape(chaveFoco)}"]`);
+    if (novo && !modalAberto()) {
+      novo.focus();
+      if (selecao && typeof selecao[0] === 'number') novo.setSelectionRange(selecao[0], selecao[1]);
+    }
+  } else if (rota === '/caixa' && !modalAberto() && document.activeElement === document.body) {
+    raiz.querySelector<HTMLElement>('[data-foco="pdv-busca"]')?.focus();
+  }
 }
 
 window.addEventListener('hashchange', () => {
-  ui.edicao = null;
-  ui.clienteSelecionado = null;
+  menuAberto = false;
   desenhar();
 });
+celularMq.addEventListener('change', desenhar);
+
+// Outra aba (ex.: cozinha aberta noutra janela) mudou os dados: recarrega para não sobrescrever.
 window.addEventListener('storage', (e) => {
-  // Outra aba mudou os dados: recarrega para não sobrescrever.
-  if (e.key && e.key.startsWith('casa-pao-de-queijo')) {
-    estado = carregar(armazem).estado;
+  if (e.key !== CHAVE) return;
+  const novo = carregar(armazem, new Date());
+  if (novo.aviso === null) {
+    estado = novo.estado;
     desenhar();
   }
 });
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && fecharModalDoTopo()) {
+    e.preventDefault();
+    return;
+  }
+  if (e.key === 'F9' && !modalAberto()) {
+    e.preventDefault();
+    ir('/caixa');
+  }
+});
+
+// A cozinha mostra "há X min": atualiza a cada 30 s se ninguém estiver digitando.
+window.setInterval(() => {
+  if (rotaAtual() === '/cozinha' && !modalAberto()) desenhar();
+}, 30_000);
+
 desenhar();

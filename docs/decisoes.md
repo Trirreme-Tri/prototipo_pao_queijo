@@ -52,8 +52,24 @@ devem virar ADR em `docs/adr/` quando o projeto sair do laboratório.
   em buscadores).
 - **Revisitar quando:** o protótipo virar produto (domínio próprio, backend).
 
+## D6 · De protótipo de descoberta para sistema de gestão (protótipo) — 06/10/2026
+
+- **Decisão (Wellington):** refazer como sistema de gestão para PC e celular: caixa (PDV), vendas,
+  estoque, produção com ficha técnica, cozinha, cardápio online/QR com pedido por WhatsApp,
+  clientes e fiado, financeiro, relatórios. Continua **protótipo**: sem login, sem dados reais.
+- **Nota fiscal:** caixa é **controle interno**; o comprovante diz "não é documento fiscal".
+  NFC-e fica para uma fase futura (certificado digital, servidor, serviço emissor pago).
+- **Vários aparelhos:** pedido do Wellington, mas sem servidor cada aparelho tem seus dados.
+  Abas no mesmo navegador se sincronizam. Sincronizar aparelhos exige backend (próxima fase, R3: custo).
+- **Celular:** Painel, Cozinha, Produção, Estoque, Clientes, Cardápio, Configurações.
+  Caixa, Vendas, Produtos, Financeiro e Relatórios só no computador.
+- **Dados de demonstração:** loja fictícia com 7 dias de movimento; dados do protótipo v1 são migrados.
+- **Link do cardápio não é assinado:** qualquer pessoa pode gerar um link com outro nome/WhatsApp.
+  Aceitável num protótipo; com backend, o cardápio passa a vir do servidor.
+- **Risco de negócio (registrado):** sistema completo antes de contrato e do aval do Leo.
+
 ## Pendências
 
-- GitHub Pages: decidir visibilidade do repositório (ver D5) e ativar
-  Settings → Pages → Source = "GitHub Actions".
+- Backend (sincronizar aparelhos), login e NFC-e: próximas fases, com ADR e orçamento.
+- Teste num celular e num PC reais da loja; impressora térmica não testada.
 - Lint (ESLint) não configurado; os gates hoje são tipos + testes + build + E2E.
