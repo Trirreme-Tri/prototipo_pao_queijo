@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   page.on('dialog', (d) => d.accept()); // confirma os window.confirm
-  await page.goto('/');
+  await page.goto('./');
 });
 
 test('fornadas: registrar, desfazer, sobra e continuar salvo após recarregar', async ({ page }) => {
@@ -29,7 +29,7 @@ test('fornadas: registrar, desfazer, sobra e continuar salvo após recarregar', 
 });
 
 test('botão gigante ocupa pelo menos um terço da tela e o texto tem 18px ou mais', async ({ page }) => {
-  await page.goto('/#/fornadas');
+  await page.goto('./#/fornadas');
   const tela = page.viewportSize()!;
   const caixa = (await page.getByRole('button', { name: 'Saiu uma fornada' }).boundingBox())!;
   expect(caixa.width).toBeGreaterThanOrEqual(tela.width / 3);
@@ -44,7 +44,7 @@ test('botão gigante ocupa pelo menos um terço da tela e o texto tem 18px ou ma
 });
 
 test('cardápio: editar preço e ver no link público do cliente', async ({ page }) => {
-  await page.goto('/#/cardapio');
+  await page.goto('./#/cardapio');
   await page.getByRole('button', { name: /Pastel/ }).click();
   await page.getByLabel('Preço').fill('7,50');
   await page.getByRole('button', { name: 'Salvar' }).click();
@@ -65,7 +65,7 @@ test('cardápio: editar preço e ver no link público do cliente', async ({ page
 });
 
 test('cardápio público abre em outro navegador, sem os dados locais', async ({ page, browser }) => {
-  await page.goto('/#/cardapio');
+  await page.goto('./#/cardapio');
   await page.getByRole('button', { name: /Toddynho/ }).click();
   await page.getByLabel('Preço').fill('5');
   await page.getByRole('button', { name: 'Salvar' }).click();
@@ -81,12 +81,12 @@ test('cardápio público abre em outro navegador, sem os dados locais', async ({
 });
 
 test('link do cardápio adulterado mostra mensagem, não quebra', async ({ page }) => {
-  await page.goto('/#/c/isso-nao-e-um-cardapio');
+  await page.goto('./#/c/isso-nao-e-um-cardapio');
   await expect(page.getByText(/link do cardápio está incompleto/)).toBeVisible();
 });
 
 test('nome com código não é executado', async ({ page }) => {
-  await page.goto('/#/estoque');
+  await page.goto('./#/estoque');
   await page.getByRole('button', { name: '+ Adicionar' }).first().click();
   await page.getByLabel('Ingrediente').fill('<img src=x onerror="window.invadido=1">');
   await page.getByLabel('Quanto tem agora').fill('2 sacos');
@@ -96,7 +96,7 @@ test('nome com código não é executado', async ({ page }) => {
 });
 
 test('estoque: duas listas separadas', async ({ page }) => {
-  await page.goto('/#/estoque');
+  await page.goto('./#/estoque');
   await page.getByRole('button', { name: '+ Adicionar' }).first().click();
   await page.getByLabel('Ingrediente').fill('Polvilho');
   await page.getByLabel('Quanto tem agora').fill('3 sacos');
@@ -112,7 +112,7 @@ test('estoque: duas listas separadas', async ({ page }) => {
 });
 
 test('clientes a prazo: lançar, somar e marcar como pago', async ({ page }) => {
-  await page.goto('/#/prazo');
+  await page.goto('./#/prazo');
   const pagar = () => page.getByRole('button', { name: 'Marcar como pago' });
   await page.getByRole('button', { name: /Cliente A/ }).click();
   await expect(pagar()).toHaveAttribute('aria-disabled', 'true');

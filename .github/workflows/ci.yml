@@ -24,3 +24,7 @@ jobs:
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
+      - name: E2E no mesmo caminho do GitHub Pages
+        run: npm run test:e2e
+        env:
+          BASE_PATH: /prototipo_pao_queijo/

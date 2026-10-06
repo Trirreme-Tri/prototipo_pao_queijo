@@ -38,6 +38,12 @@ npm run verificar      # tipos + testes + build + testes no navegador (E2E)
 
 O E2E usa Playwright: na primeira vez rode `npx playwright install chromium`.
 
+## Publicar
+
+GitHub Pages, automático a cada merge na `main` (`.github/workflows/pages.yml`).
+Endereço: `https://trirreme-tri.github.io/prototipo_pao_queijo/`.
+Para testar localmente no mesmo caminho: `BASE_PATH=/prototipo_pao_queijo/ npm run test:e2e`.
+
 ## Stack
 
 Vite + TypeScript, sem framework. Única dependência de produção: `qrcode-generator` (MIT).

@@ -38,7 +38,22 @@ devem virar ADR em `docs/adr/` quando o projeto sair do laboratório.
 - **Clientes a prazo** começam como Cliente A–D (nomes fictícios). Se o Thiago digitar nomes
   reais, eles ficam só no aparelho dele.
 
+## D5 · Hospedagem no GitHub Pages — 06/10/2026
+
+- **Decisão:** o protótipo é publicado no GitHub Pages pelo workflow `.github/workflows/pages.yml`,
+  a cada merge na `main`.
+- **Quem decidiu:** Wellington (06/10/2026). A Vercel foi descartada: o plano gratuito (Hobby)
+  não permite uso comercial.
+- **Como funciona:** site estático, sem servidor. O build recebe o caminho do site
+  (`BASE_PATH`, ex.: `/prototipo_pao_queijo/`) e o CI roda o E2E nesse mesmo caminho.
+- **Atenção:** no plano gratuito do GitHub, o Pages só funciona com repositório **público**.
+  Repositório privado exige plano pago (Pro/Team). E o **site** publicado é aberto para quem
+  tiver o link, mesmo vindo de repositório privado (`robots noindex` só pede para não aparecer
+  em buscadores).
+- **Revisitar quando:** o protótipo virar produto (domínio próprio, backend).
+
 ## Pendências
 
-- Hospedagem (onde colocar no ar) — decisão do Wellington, ver PR.
+- GitHub Pages: decidir visibilidade do repositório (ver D5) e ativar
+  Settings → Pages → Source = "GitHub Actions".
 - Lint (ESLint) não configurado; os gates hoje são tipos + testes + build + E2E.
