@@ -1,0 +1,28 @@
+{
+  "name": "prototipo-pao-queijo",
+  "version": "0.1.0",
+  "description": "Protótipo de descoberta da Casa do Pão de Queijo (TRIRREME)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "verificar": "npm run typecheck && npm test && npm run build && npm run test:e2e"
+  },
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^22.20.5",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.4",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "qrcode-generator": "^1.5.2"
+  },
+  "private": true,
+  "type": "module"
+}
